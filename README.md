@@ -1,4 +1,13 @@
-# LLaMA 
+# LLaMA -Jittor
+
+This repository is a jittor-implementation modified from [llama](https://github.com/facebookresearch/llama).
+
+The following command can be used to run llama-jittor examples.
+```
+amp_level=4 use_cuda_managed_allocator=1 CUDA_VISIBLE_DEVICES=6 python3 example.py --ckpt_dir download/7B --tokenizer_path download/tokenizer.model
+```
+
+---
 
 This repository is intended as a minimal, hackable and readable example to load [LLaMA](https://ai.facebook.com/blog/large-language-model-llama-meta-ai/) ([arXiv](https://arxiv.org/abs/2302.13971v1)) models and run inference.
 In order to download the checkpoints and tokenizer, fill this [google form](https://forms.gle/jk851eBVbX1m5TAv5)

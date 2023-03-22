@@ -3,7 +3,7 @@
 
 from typing import List
 
-import torch
+import jittor as jt
 
 from llama.tokenizer import Tokenizer
 from llama.model import Transformer
@@ -32,22 +32,22 @@ class LLaMA:
 
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_size)
 
-        tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).cuda().long()
+        tokens = jt.full((bsz, total_len), self.tokenizer.pad_id).int32()
         for k, t in enumerate(prompt_tokens):
-            tokens[k, : len(t)] = torch.tensor(t).long()
+            tokens[k, : len(t)] = jt.array(t).int32()
         input_text_mask = tokens != self.tokenizer.pad_id
         start_pos = min_prompt_size
         prev_pos = 0
         for cur_pos in range(start_pos, total_len):
-            logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            logits = self.model(tokens[:, prev_pos:cur_pos], prev_pos)
             if temperature > 0:
-                probs = torch.softmax(logits / temperature, dim=-1)
+                probs = jt.nn.softmax(logits / temperature, dim=-1)
                 next_token = sample_top_p(probs, top_p)
             else:
-                next_token = torch.argmax(logits, dim=-1)
+                next_token = jt.argmax(logits, dim=-1)
             next_token = next_token.reshape(-1)
             # only replace token if prompt has already been generated
-            next_token = torch.where(
+            next_token = jt.where(
                 input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
             )
             tokens[:, cur_pos] = next_token
@@ -67,11 +67,11 @@ class LLaMA:
 
 
 def sample_top_p(probs, p):
-    probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
-    probs_sum = torch.cumsum(probs_sort, dim=-1)
+    probs_idx, probs_sort = jt.argsort(probs, dim=-1, descending=True)
+    probs_sum = jt.cumsum(probs_sort, dim=-1)
     mask = probs_sum - probs_sort > p
     probs_sort[mask] = 0.0
-    probs_sort.div_(probs_sort.sum(dim=-1, keepdim=True))
-    next_token = torch.multinomial(probs_sort, num_samples=1)
-    next_token = torch.gather(probs_idx, -1, next_token)
+    probs_sort = probs_sort / probs_sort.sum(dim=-1, keepdims=True)
+    next_token = jt.multinomial(probs_sort, num_samples=1)
+    next_token = jt.gather(probs_idx, -1, next_token)
     return next_token
